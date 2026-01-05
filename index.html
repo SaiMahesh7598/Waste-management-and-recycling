@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Waste Complaint Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+<header class="header">
+<div class="title-block">
+<span class="badge">Municipal complaint</span>
+<h1>Report Waste in Your Area</h1>
+<p class="subtitle">Report garbage with image & automatic location.</p>
+</div>
+<div class="status-chip">● Live intake</div>
+</header>
+
+
+<form id="complaintForm">
+<div class="section-label">Resident details</div>
+<div class="form-grid">
+<div class="form-group">
+<label>Name</label>
+<input type="text" placeholder="Your name">
+</div>
+<div class="form-group">
+<label>Contact</label>
+<input type="text" placeholder="Phone or email">
+</div>
+</div>
+
+
+<div class="section-label">Location</div>
+<input type="text" id="locationText" placeholder="Location will appear here" readonly>
+<button type="button" class="btn-secondary" onclick="getLocation()">Use current location</button>
+
+
+<div class="section-label">Upload image</div>
+<input type="file" accept="image/*" capture="environment" id="imageInput">
+
+
+<div class="section-label">Complaint</div>
+<textarea placeholder="Describe the issue"></textarea>
+
+
+<div class="actions">
+<button type="submit" class="btn-primary">Submit (UI only)</button>
+</div>
+</form>
+
+
+<p class="footer-note">No server used. Image & location stay on device.</p>
+</div>
+
+
+<script src="script.js"></script>
+</body>
+</html>

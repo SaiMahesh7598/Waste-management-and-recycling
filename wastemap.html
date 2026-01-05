@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Municipal Map – Vizag Demo</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .legend {
+      background: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .legend-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 2px 0;
+    }
+    .legend-color {
+      width: 16px;
+      height: 26px;
+      margin-right: 6px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .popup-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .status-open {
+      color: red;
+      font-weight: bold;
+    }
+    .status-resolved {
+      color: green;
+      font-weight: bold;
+    }
+
+    /* Custom pin style for divIcons (if needed later) */
+    .marker-pin {
+      width: 30px;
+      height: 30px;
+      border-radius: 50% 50% 50% 0;
+      background: #ff5722;
+      position: absolute;
+      transform: rotate(-45deg);
+      left: 50%;
+      top: 50%;
+      margin: -15px 0 0 -15px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+  </script>
+
+  <script>
+    // ---- 1. Map setup ----
+    const vizagCenter = [17.686815, 83.218483]; // Visakhapatnam center [web:54]
+
+    const map = L.map('map').setView(vizagCenter, 10);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 60 km radius (~60000 m)
+    const radiusCircle = L.circle(vizagCenter, {
+      radius: 60000,
+      color: '#1565c0',
+      fillColor: '#1565c0',
+      fillOpacity: 0.05
+    }).addTo(map);
+    radiusCircle.bindPopup(
+      '<div class="popup-title">Coverage Area</div>' +
+      '<div>60 km radius around Visakhapatnam</div>'
+    );
+
+    // ---- 2. Custom pin icons (PNG URLs) ----
+    // Using common free marker images hosted by Leaflet CDN / GitHub examples [web:72][web:75]
+    const officeIcon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      shadowSize: [41, 41]
+    });
+
+    const dumpIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      shadowSize: [41, 41]
+    });
+
+    const complaintOpenIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      shadowSize: [41, 41]
+    });
+
+    const complaintResolvedIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      shadowSize: [41, 41]
+    });
+
+    // ---- 3. Data ----
+    const municipalOffice = {
+      coords: [17.7100, 83.3000],
+      name: 'GVMC Municipal Office',
+      address: 'Greater Visakhapatnam Municipal Corporation'
+    };
+
+    const dumpLocations = [
+      {
+        coords: [17.7270, 83.3050],
+        name: 'Dump Point - Maddilapalem',
+        level: 'Overflowing',
+        updated: '2025-12-21'
+      },
+      {
+        coords: [17.7135, 83.2950],
+        name: 'Dump Point - Seethammadhara',
+        level: 'Near capacity',
+        updated: '2025-12-20'
+      },
+      {
+        coords: [17.7020, 83.2700],
+        name: 'Dump Point - Dwaraka Nagar',
+        level: 'Normal',
+        updated: '2025-12-19'
+      },
+      {
+        coords: [17.7400, 83.2600],
+        name: 'Dump Point - NAD Junction',
+        level: 'Overflowing',
+        updated: '2025-12-22'
+      }
+    ];
+
+    // complaints with id + status (we will modify status on button click)
+    const complaintLocations = [
+      {
+        id: '#C1001',
+        coords: [17.7050, 83.3100],
+        area: 'Gajuwaka',
+        type: 'Garbage not collected',
+        status: 'Open',
+        created: '2025-12-20'
+      },
+      {
+        id: '#C1002',
+        coords: [17.6900, 83.2500],
+        area: 'Rama Talkies',
+        type: 'Overflowing roadside bin',
+        status: 'Open',
+        created: '2025-12-19'
+      },
+      {
+        id: '#C1003',
+        coords: [17.7200, 83.2300],
+        area: 'MVP Colony',
+        type: 'Illegal dumping',
+        status: 'Resolved',
+        created: '2025-12-18'
+      },
+      {
+        id: '#C1004',
+        coords: [17.7500, 83.2000],
+        area: 'Bheemili',
+        type: 'Garbage burning',
+        status: 'Open',
+        created: '2025-12-21'
+      }
+    ];
+
+    // Keep references to complaint markers so we can update icon/status
+    const complaintMarkers = {};
+
+    // ---- 4. Add markers & popups ----
+
+    // Office marker
+    L.marker(municipalOffice.coords, { icon: officeIcon })
+      .addTo(map)
+      .bindPopup(
+        '<div class="popup-title">' + municipalOffice.name + '</div>' +
+        '<div>' + municipalOffice.address + '</div>'
+      );
+
+    // Dump markers
+    dumpLocations.forEach(dump => {
+      L.marker(dump.coords, { icon: dumpIcon })
+        .addTo(map)
+        .bindPopup(
+          '<div class="popup-title">' + dump.name + '</div>' +
+          '<div><b>Level:</b> ' + dump.level + '</div>' +
+          '<div><b>Last updated:</b> ' + dump.updated + '</div>' +
+          '<div><b>Category:</b> Dump location</div>'
+        );
+    });
+
+    // Helper to build complaint popup HTML
+    function buildComplaintPopupHtml(c) {
+      const statusClass = c.status === 'Open' ? 'status-open' : 'status-resolved';
+      const buttonLabel = c.status === 'Open'
+        ? 'Mark as Resolved'
+        : 'Mark as Not Resolved';
+
+      return (
+        '<div>' +
+          '<div class="popup-title">Complaint ' + c.id + ' – ' + c.area + '</div>' +
+          '<div><b>Type:</b> ' + c.type + '</div>' +
+          '<div><b>Status:</b> <span id="status-' + c.id + '" class="' + statusClass + '">' +
+            c.status +
+          '</span></div>' +
+          '<div><b>Created:</b> ' + c.created + '</div>' +
+          '<div><b>Category:</b> Citizen complaint</div>' +
+          '<br />' +
+          '<button id="btn-' + c.id + '" ' +
+            'style="padding:4px 8px;font-size:12px;border:none;border-radius:4px;' +
+                   'cursor:pointer;background:' + (c.status === 'Open' ? '#4caf50' : '#f44336') +
+                   ';color:white;">' +
+            buttonLabel +
+          '</button>' +
+        '</div>'
+      );
+    }
+
+    // Complaint markers with click handlers to wire button events [web:77][web:80]
+    complaintLocations.forEach(c => {
+      const icon = c.status === 'Open' ? complaintOpenIcon : complaintResolvedIcon;
+
+      const marker = L.marker(c.coords, { icon }).addTo(map);
+      complaintMarkers[c.id] = { data: c, marker };
+
+      marker.on('click', () => {
+        marker.bindPopup(buildComplaintPopupHtml(c)).openPopup();
+
+        // After popup opens, attach button click
+        marker.once('popupopen', () => {
+          const btn = document.getElementById('btn-' + c.id);
+          if (btn) {
+            btn.onclick = () => toggleComplaintStatus(c.id);
+          }
+        });
+      });
+    });
+
+    // ---- 5. Function to toggle complaint status & icon ----
+    function toggleComplaintStatus(complaintId) {
+      const obj = complaintMarkers[complaintId];
+      if (!obj) return;
+
+      const c = obj.data;
+
+      // Toggle status
+      c.status = c.status === 'Open' ? 'Resolved' : 'Open';
+
+      // Update icon color
+      const newIcon = c.status === 'Open'
+        ? complaintOpenIcon
+        : complaintResolvedIcon;
+      obj.marker.setIcon(newIcon);
+
+      // Update popup content (status text + button label/color)
+      obj.marker.setPopupContent(buildComplaintPopupHtml(c));
+
+      // Re-bind click for new popup DOM
+      obj.marker.openPopup();
+      obj.marker.once('popupopen', () => {
+        const btn = document.getElementById('btn-' + c.id);
+        if (btn) {
+          btn.onclick = () => toggleComplaintStatus(c.id);
+        }
+      });
+    }
+
+    // ---- 6. Legend ----
+    const legend = L.control({ position: 'bottomright' });
+
+    legend.onAdd = function () {
+      const div = L.DomUtil.create('div', 'legend');
+      div.innerHTML =
+        '<div class="legend-title">Legend</div>' +
+        '<div class="legend-item">' +
+          '<span class="legend-color" ' +
+            'style="background-image:url(https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png)"></span>' +
+          'Municipal Office</div>' +
+        '<div class="legend-item">' +
+          '<span class="legend-color" ' +
+            'style="background-image:url(https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png)"></span>' +
+          'Dump Location</div>' +
+        '<div class="legend-item">' +
+          '<span class="legend-color" ' +
+            'style="background-image:url(https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png)"></span>' +
+          'Open Complaint</div>' +
+        '<div class="legend-item">' +
+          '<span class="legend-color" ' +
+            'style="background-image:url(https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png)"></span>' +
+          'Resolved Complaint</div>' +
+        '<div style="margin-top:4px;font-size:11px;">Blue circle = 60 km radius.</div>';
+      return div;
+    };
+
+    legend.addTo(map);
+  </script>
+</body>
+</html>
